@@ -42,37 +42,30 @@ class ChessLogic extends ChangeNotifier {
     notifyListeners();
   }
 
-  void makeOpponentMove(String from, String to) {
-    if (!isBluetoothMode || isMyTurn) return;
-    controller.makeMove(from: from, to: to);
-    isMyTurn = true;
+  bool acceptOpponentMove(String from, String to) {
+    if (!isBluetoothMode || isMyTurn || controller.game.turn == _colorValue(myColor)) return false;
+    try {
+      controller.makeMove(from: from, to: to);
+      isMyTurn = true;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  int _colorValue(PlayerColor color) => color == PlayerColor.white ? Chess.WHITE : Chess.BLACK;
+
+  Future<bool> completeLocalMove() async {
+    if (!isBluetoothMode || !isMyTurn) return false;
+    isMyTurn = false;
     notifyListeners();
+    return true;
   }
 
-  void completeLocalMove() {
-    if (isBluetoothMode) {
-      isMyTurn = false;
-      notifyListeners();
-    }
-  }
-
-  void decreaseWhiteTime() {
-    if (whiteTimeRemaining > 0) {
-      whiteTimeRemaining--;
-      notifyListeners();
-    }
-  }
-
-  void decreaseBlackTime() {
-    if (blackTimeRemaining > 0) {
-      blackTimeRemaining--;
-      notifyListeners();
-    }
-  }
-
-  void undoLastMove() {
-    if (!isBluetoothMode) controller.undoMove();
-  }
+  void decreaseWhiteTime() { if (whiteTimeRemaining > 0) { whiteTimeRemaining--; notifyListeners(); } }
+  void decreaseBlackTime() { if (blackTimeRemaining > 0) { blackTimeRemaining--; notifyListeners(); } }
+  void undoLastMove() { if (!isBluetoothMode) controller.undoMove(); }
 
   bool get isClockExpired => whiteTimeRemaining == 0 || blackTimeRemaining == 0;
   bool get isGameOver => controller.isGameOver();
