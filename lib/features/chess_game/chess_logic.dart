@@ -4,20 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chess_board/flutter_chess_board.dart';
 
 class ChessLogic extends ChangeNotifier {
-  late ChessBoardController controller;
+  late final ChessBoardController controller;
   bool isBluetoothMode = false;
   bool isMyTurn = true;
   PlayerColor myColor = PlayerColor.white;
-  List<String> moveHistory = [];
+  List<String> moveHistory = <String>[];
   int whiteTimeRemaining = 600;
   int blackTimeRemaining = 600;
 
   ChessLogic() {
     controller = ChessBoardController();
-    _initListener();
-  }
-
-  void _initListener() {
     controller.addListener(() {
       _updateMoveHistory();
       notifyListeners();
@@ -25,47 +21,39 @@ class ChessLogic extends ChangeNotifier {
   }
 
   void _updateMoveHistory() {
-    final String pgn = controller.getSan().toString();
-    if (pgn.isNotEmpty) {
-      moveHistory = pgn
-          .replaceAll(RegExp(r'\d+\.\s*'), '')
-          .trim()
-          .split(' ')
-          .where((move) => move.isNotEmpty)
-          .toList();
-    } else {
-      moveHistory = [];
-    }
+    final pgn = controller.getSan().toString().trim();
+    moveHistory = pgn.isEmpty
+        ? <String>[]
+        : pgn.replaceAll(RegExp(r'\d+\.\s*'), '').split(RegExp(r'\s+'));
   }
 
   void setupGame({required bool bluetoothMode, required PlayerColor playerColor}) {
     isBluetoothMode = bluetoothMode;
     myColor = playerColor;
-    if (isBluetoothMode) {
-      isMyTurn = (myColor == PlayerColor.white);
-    } else {
-      isMyTurn = true;
-    }
     resetGame();
   }
 
   void resetGame() {
     controller.clearBoard();
-    moveHistory = [];
+    moveHistory = <String>[];
     whiteTimeRemaining = 600;
     blackTimeRemaining = 600;
-    if (isBluetoothMode) {
-      isMyTurn = (myColor == PlayerColor.white);
-    } else {
-      isMyTurn = true;
-    }
+    isMyTurn = !isBluetoothMode || myColor == PlayerColor.white;
     notifyListeners();
   }
 
   void makeOpponentMove(String from, String to) {
+    if (!isBluetoothMode || isMyTurn) return;
     controller.makeMove(from: from, to: to);
     isMyTurn = true;
     notifyListeners();
+  }
+
+  void completeLocalMove() {
+    if (isBluetoothMode) {
+      isMyTurn = false;
+      notifyListeners();
+    }
   }
 
   void decreaseWhiteTime() {
@@ -83,12 +71,10 @@ class ChessLogic extends ChangeNotifier {
   }
 
   void undoLastMove() {
-    if (!isBluetoothMode) {
-      controller.undoMove();
-      notifyListeners();
-    }
+    if (!isBluetoothMode) controller.undoMove();
   }
 
+  bool get isClockExpired => whiteTimeRemaining == 0 || blackTimeRemaining == 0;
   bool get isGameOver => controller.isGameOver();
   bool get isCheckMate => controller.isCheckMate();
   bool get isDraw => controller.isDraw();
